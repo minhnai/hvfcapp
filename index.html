@@ -140,10 +140,6 @@
     </div>
     
     <div class="flex items-center gap-2">
-        <button onclick="goHome()" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm active:scale-90 transition">
-            <i class="fas fa-home text-xs"></i>
-        </button>
-        
         <button onclick="window.location.reload()" class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center shadow-sm active:scale-90 transition hover:bg-green-100 hover:rotate-180 duration-500">
             <i class="fas fa-sync-alt text-xs"></i>
         </button>
@@ -1086,36 +1082,35 @@
         }
         // --- LOGIC NÚT HOME: QUAY VỀ TRANG QUẢN LÝ GIẢI ---
         // --- SỬA LỖI: HÀM goHome CHUẨN (XỬ LÝ CẢ LOGIN VÀ NAV) ---
-        window.goHome = function() {
-    // Hiện lại thanh menu dưới
-    const bottomNav = document.querySelector('.bottom-nav');
-    if (bottomNav) bottomNav.classList.remove('hidden');
+        // --- HÀM HOME: QUAY VỀ MÀN HÌNH CHỌN GIẢI (ĐÃ SỬA LỖI) ---
+    window.goHome = function() {
+        // 1. Đảm bảo giao diện chính hiển thị
+        document.getElementById('welcome-screen').style.display = 'none';
+        document.getElementById('app-container').classList.remove('hidden');
+        
+        // 2. Ẩn trang Lịch sử phiên bản (nếu đang mở)
+        document.getElementById('content-history').classList.add('hidden');
+        
+        // 3. Hiện lại thanh menu dưới đáy
+        document.querySelector('.bottom-nav').classList.remove('hidden');
 
-    if (!currentUser) return; // Nếu chưa đăng nhập thì thôi
+        // 4. QUAN TRỌNG: Xóa ID giải đang chọn để về màn hình danh sách
+        appData.currentTourId = null;
+        sessionStorage.removeItem('hvfc_current_tour_id');
 
-    // Ẩn trang history (nếu có)
-    const histEl = document.getElementById('content-history');
-    if (histEl) histEl.classList.add('hidden');
-    
-    // Ẩn trang welcome
-    const welcomeEl = document.getElementById('welcome-screen');
-    if (welcomeEl) welcomeEl.style.display = 'none';
-
-    // Hiện app container
-    const appContainer = document.getElementById('app-container');
-    if (appContainer) appContainer.classList.remove('hidden');
-
-    // Mặc định về trang Danh sách giải
-    switchView('tour-list');
-}
+        // 5. Chuyển về tab Giải Đấu (Lúc này sẽ hiện danh sách chọn giải)
+        switchView('tour-detail');
+        
+        // 6. Cuộn lên đầu trang
+        window.scrollTo(0, 0);
+        
+        
+    }
         // --- CORE FUNCTIONS (Simplified for Mobile) ---
         function generateId() { return Math.random().toString(36).substr(2,9); }
         function formatDate(dStr) { if(!dStr) return ''; const [y, m, d] = dStr.split('-'); return `${d}/${m}/${y}`; }
         function getTeam(tid) { return appData.teams.find(x=>x.id===tid); }
         // --- HÀM TẢI DỮ LIỆU TỪ CLOUD ---
-// --- HÀM TẢI DỮ LIỆU TỪ CLOUD (ĐÃ SỬA LỖI F5) ---
-        // --- HÀM TẢI DỮ LIỆU TỪ MÁY (OFFLINE) ---
-// --- BỘ HÀM CORE ĐÃ ĐƯỢC DỌN DẸP SẠCH SẼ (V4.2025) ---
 
 // 1. HÀM TẢI DỮ LIỆU (OFFLINE)
 function loadFromStorage() {
