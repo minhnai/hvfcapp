@@ -197,7 +197,7 @@
                 </div>
 
                 <div id="active-tour-info" class="text-xs text-blue-200 font-bold pl-0 mb-4 relative z-10"></div>
-
+                <div id="tour-teams-display" class="mb-4"></div>
                 <div class="flex gap-2 relative z-10">
                     <button onclick="printTournament()" class="text-[10px] font-bold bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm hover:bg-white/20 border border-white/20">
                         <i class="fas fa-print mr-1"></i> Xuất PDF
@@ -354,7 +354,7 @@
                     <li><b>Manual Ranking (Xếp hạng thủ công):</b> Cho phép BTC kéo thả vị trí trên BXH để giải quyết các trường hợp bằng điểm số/chỉ số phụ cần bốc thăm.</li>
                     <li><b>Advanced Stats & Suspensions:</b> Tự động phát hiện và cảnh báo cầu thủ bị treo giò (thẻ đỏ/2 thẻ vàng) trước giờ thi đấu. Thống kê Hat-trick/Poker.</li>
                     <li><b>In ấn PDF Pro:</b> Xuất báo cáo giải đấu chuẩn A4 với đầy đủ Lịch thi đấu, Kết quả, BXH và Bảng vàng vinh danh.</li>
-                    <li><b>Hiệu ứng Champion:</b> Pháo hoa chúc mừng tự động khi tìm ra nhà Vô địch (League hoặc Cup).</li>
+                    <li><b>Hiệu ứng Champion:</b> Pháo hoa chúc mừng tự động khi tìm ra nhà Vô địch (League hoặc Loại trực tiếp).</li>
                     <li>Bổ sung Hình ảnh đại diện của cầu thủ</li>
                     <li>Bổ sung Widget trận đấu sắp tới.</li>
                 </ul>
@@ -1578,7 +1578,7 @@ function showVersionHistory() {
             <div onclick="loadTour('${t.id}')" class="min-w-[140px] p-2 rounded-xl cursor-pointer transition-all snap-start flex flex-col items-center gap-1 ${activeClass}">
                 <img src="${logo}" class="w-8 h-8 object-contain bg-white rounded-full p-0.5">
                 <div class="text-[10px] font-black uppercase truncate w-full text-center leading-tight">${t.name}</div>
-                <div class="text-[8px] opacity-80 font-bold">${t.format==='group'?'LEAGUE':'CÚP'}</div>
+                <div class="text-[8px] opacity-80 font-bold">${t.format==='group'?'LEAGUE':'LOẠI TRỰC TIẾP'}</div>
             </div>`;
         });
     }
@@ -1979,7 +1979,7 @@ function renderModernBucketAssigner(prefix, buckets, countId) {
         }
 
         let boxTitle = `BẢNG ${String.fromCharCode(65+i)}`;
-        if (num === 1) boxTitle = "DANH SÁCH ĐỘI (LEAGUE)";
+        if (num === 1) boxTitle = "DANH SÁCH ĐỘI THAM GIA GIẢI";
 
         t.innerHTML += `
         <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
@@ -2217,7 +2217,98 @@ function initializeTournamentData(tour, buckets) {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 1000);
 }
-// --- 2. HÀM HIỂN THỊ CHI TIẾT GIẢI (HEADER ĐẦY ĐỦ) ---
+// --- HÀM MỚI: HIỂN THỊ DANH SÁCH ĐỘI (CÓ PHÂN BẢNG & MÀU) ---
+function renderParticipatingTeams(t) {
+    const c = document.getElementById('tour-teams-display');
+    if (!c) return;
+    c.innerHTML = '';
+
+    // Nút ẩn/hiện danh sách (Accordion)
+    const toggleId = 'toggle-team-list-' + t.id;
+    c.innerHTML = `
+    <div class="app-card p-0 overflow-hidden border border-slate-200 shadow-sm">
+        <div class="bg-slate-100 p-3 flex justify-between items-center cursor-pointer" onclick="document.getElementById('${toggleId}').classList.toggle('hidden');">
+            <h4 class="font-black text-xs text-slate-700 uppercase flex items-center gap-2">
+                <i class="fas fa-users text-blue-600"></i> Các Đội Tham Gia (${t.teamIds.length})
+            </h4>
+            <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+        </div>
+        <div id="${toggleId}" class="hidden bg-slate-50 p-3 space-y-3 transition-all">
+            </div>
+    </div>`;
+
+    const contentBox = document.getElementById(toggleId);
+
+    // --- TRƯỜNG HỢP 1: ĐẤU BẢNG (GROUP) ---
+    if (t.format === 'group') {
+        const buckets = t.config.buckets || {};
+        const groupCount = t.config.groupCount || 1;
+        
+        // Mảng màu sắc trang trí cho từng bảng
+        const colors = [
+            { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-500' },   // Bảng A
+            { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-500' }, // Bảng B
+            { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-500' },   // Bảng C
+            { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-500' }    // Bảng D
+        ];
+
+        for (let i = 0; i < groupCount; i++) {
+            const groupName = String.fromCharCode(65 + i);
+            const teamIds = buckets[i] || [];
+            const style = colors[i % colors.length]; // Lấy màu xoay vòng
+
+            let tableHtml = `
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <div class="${style.bg} ${style.text} px-3 py-2 text-xs font-black uppercase border-l-4 ${style.border} flex justify-between">
+                    <span>BẢNG ${groupName}</span>
+                    <span class="text-[10px] opacity-70">${teamIds.length} Đội</span>
+                </div>
+                <div class="divide-y divide-slate-100">`;
+
+            if (teamIds.length === 0) {
+                tableHtml += `<div class="p-3 text-center text-[10px] text-slate-400 italic">Chưa có đội nào.</div>`;
+            } else {
+                teamIds.forEach(tid => {
+                    const team = getTeam(tid);
+                    if (team) {
+                        tableHtml += `
+                        <div class="flex items-center gap-3 p-2 hover:bg-slate-50 transition">
+                            <img src="${team.logo || 'hvfclogo.png'}" class="w-8 h-8 object-contain bg-white rounded-full border border-slate-100 p-0.5 shadow-sm">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-xs text-slate-700 truncate">${team.name}</div>
+                                <div class="text-[9px] text-slate-400 truncate">
+                                    HLV: ${team.coach || '---'}
+                                </div>
+                            </div>
+                        </div>`;
+                    }
+                });
+            }
+            tableHtml += `</div></div>`;
+            contentBox.innerHTML += tableHtml;
+        }
+    } 
+    // --- TRƯỜNG HỢP 2: KNOCK-OUT ---
+    else {
+        let listHtml = `<div class="grid grid-cols-2 gap-2">`;
+        t.teamIds.forEach(tid => {
+            const team = getTeam(tid);
+            if (team) {
+                listHtml += `
+                <div class="bg-white p-2 rounded-lg border border-slate-200 flex items-center gap-2 shadow-sm">
+                    <img src="${team.logo || 'hvfclogo.png'}" class="w-8 h-8 object-contain">
+                    <div class="overflow-hidden">
+                        <div class="font-bold text-[10px] text-slate-800 truncate">${team.name}</div>
+                        <div class="text-[8px] text-slate-400 font-bold bg-slate-100 px-1 rounded inline-block">${team.shortName}</div>
+                    </div>
+                </div>`;
+            }
+        });
+        listHtml += `</div>`;
+        contentBox.innerHTML = listHtml;
+    }
+}
+
 // --- 2. HÀM HIỂN THỊ CHI TIẾT GIẢI (CẬP NHẬT: CÓ LOGO GIẢI Ở HEADER) ---
 function renderActiveTour() {
     const t = appData.tournaments.find(x => x.id === appData.currentTourId);
@@ -2226,7 +2317,9 @@ function renderActiveTour() {
     document.getElementById('tour-create').classList.add('hidden');
     document.getElementById('tour-active').classList.remove('hidden');
     
-    // --- CẬP NHẬT HEADER VỚI LOGO ---
+    // === THÊM DÒNG NÀY VÀO ĐÂY ===
+    renderParticipatingTeams(t); 
+    // =============================
     // --- CẬP NHẬT HEADER VỚI LOGO (CÁCH ỔN ĐỊNH HƠN) ---
     // 1. Cập nhật tên giải
     document.getElementById('active-tour-title').innerText = t.name;
@@ -5237,6 +5330,7 @@ function getSortedGroupStats(group) {
             }
         }
     }
+    
     </script>
 </body>
 </html>
